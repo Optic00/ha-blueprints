@@ -1,7 +1,7 @@
 
 blueprint:
   name: SMA BYD Akkusteuerung
-  source_url: https://github.com/Optic00/ha-blueprints/main/sma-se/STP_SE_Akkusteuerung.yaml
+  source_url: https://raw.githubusercontent.com/Optic00/ha-blueprints/main/sma-se/STP_SE_Akkusteuerung.yaml
   description: Diese Automation steuert Anhand des Helfers "BYD Akkusteuerung" den SMA SE Wechselrichter
   domain: automation
   #  source_url:
