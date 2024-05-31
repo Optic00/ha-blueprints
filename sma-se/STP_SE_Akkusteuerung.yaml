@@ -147,8 +147,8 @@ action:
           address: 40149
           slave: 3
           value:
-            - 0
-            - 0
+            - 65535
+            - 65535
       - device_id: e5b174e2bdbfcc2dc616800473090f5a
         domain: mobile_app
         type: notify
