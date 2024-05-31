@@ -1,1 +1,205 @@
 
+blueprint:
+  name: SMA BYD Akkusteuerung
+  source_url: https://github.com/Optic00/ha-blueprints/main/sma-se/STP_SE_Akkusteuerung.yaml
+  description: Diese Automation steuert Anhand des Helfers "BYD Akkusteuerung" den SMA SE Wechselrichter
+  domain: automation
+  #  source_url:
+  input:
+    byd_akkusteuerung:
+      name: BYD Akkusteuerung Helfer
+      description: Das ist der Helfer wo man den Zustand des Akkus auswählen kann
+      default: input_select.byd_akkusteuerung
+      selector:
+        entity:
+          filter:
+            domain: input_select
+    sma_wr_modbus_entity:
+      name: Name des Modbus Hub für den SMA WR
+      description: Hier muss exakt der Name des Modbus Eintrags aus der Configuration.yaml rein
+      default: sma-sr_wr
+    akku_ladestärke_0.2C:
+      name: Ladestärke für 0.2 C
+      description: Die Ladestärke mit dem der Akku bei Opti-Automatik geladen werden soll. Empfohlen sind 20% der Akkukapazität in Watt. (Beispiel für 12.8kWh)
+      default: 2560
+    byd_akkusteuerung_ladestaerke_soll:
+      name: BYD Akkusteuerung Ladestärke Soll
+      description: Hier den Helfer für die Ladestärke auswählen
+      default: input_number.byd_akkusteuerung_ladestaerke_soll
+      selector:
+        entity:
+          filter:
+            domain: input_number
+    byd_akkusteuerung_entladestaerke_soll:
+      name: BYD Akkusteuerung Entladestärke Soll
+      description: Hier den Helfer für die Entladestärke auswählen
+      default: input_number.byd_akkusteuerung_entladestaerke_soll
+      selector:
+        entity:
+          filter:
+            domain: input_number
+alias: BYD Akkusteuerung
+description: ""
+trigger:
+  - platform: state
+    entity_id:
+      - input_select.byd_akkusteuerung
+      - input_number.byd_akkusteuerung_ladestaerke_soll
+      - input_number.byd_akkusteuerung_entladestaerke_soll
+    from: null
+    to: null
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 1
+  - platform: time_pattern
+    minutes: /30
+    enabled: true
+  - platform: homeassistant
+    event: start
+condition: []
+action:
+  - alias: Wenn BYD Akku schnell Laden ...
+    if:
+      - condition: state
+        entity_id: input_select.byd_akkusteuerung
+        state: BYD Akku schnell Laden
+    then:
+      - service: modbus.write_register
+        data:
+          hub: !input sma_wr_modbus_entity
+          address: 40151
+          slave: 3
+          value:
+            - 0
+            - 802
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      - service: modbus.write_register
+        data:
+          hub: !input sma_wr_modbus_entity
+          address: 40149
+          slave: 3
+          value:
+            - 65535
+            - >-
+              {{ 65535 -
+              states('input_number.byd_akkusteuerung_ladestaerke_soll') | int }}
+  - alias: Wenn BYD Akku schnell Entaden ...
+    if:
+      - condition: state
+        entity_id: input_select.byd_akkusteuerung
+        state: BYD Akku schnell Entladen
+    then:
+      - service: modbus.write_register
+        data:
+          hub: !input sma_wr_modbus_entity
+          address: 40151
+          slave: 3
+          value:
+            - 0
+            - 802
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      - service: modbus.write_register
+        data:
+          hub: !input sma_wr_modbus_entity
+          address: 40149
+          slave: 3
+          value:
+            - 0
+            - >-
+              {{ states('input_number.byd_akkusteuerung_entladestaerke_soll') |
+              int }}
+      - device_id: e5b174e2bdbfcc2dc616800473090f5a
+        domain: mobile_app
+        type: notify
+        message: BYD Akku auf schnell Entladen
+        title: BYD Akku Automation
+  - alias: Wenn BYD Akku Pause ...
+    if:
+      - condition: state
+        entity_id: input_select.byd_akkusteuerung
+        state: BYD Akku Pause
+    then:
+      - service: modbus.write_register
+        data:
+          hub: !input sma_wr_modbus_entity
+          address: 40151
+          slave: 3
+          value:
+            - 0
+            - 802
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      - service: modbus.write_register
+        data:
+          hub: !input sma_wr_modbus_entity
+          address: 40149
+          slave: 3
+          value:
+            - 0
+            - 0
+      - device_id: e5b174e2bdbfcc2dc616800473090f5a
+        domain: mobile_app
+        type: notify
+        message: BYD Akku auf Pause
+        title: BYD Akku Automation
+        enabled: false
+  - alias: Wenn BYD Automatik  ...
+    if:
+      - condition: state
+        entity_id: input_select.byd_akkusteuerung
+        state: BYD Akku Automatisch
+    then:
+      - device_id: e5b174e2bdbfcc2dc616800473090f5a
+        domain: mobile_app
+        type: notify
+        message: BYD Akku auf Automatik gestellt
+        title: BYD Akku Automation
+        enabled: false
+      - service: modbus.write_register
+        data:
+          hub: sma-sr_wr
+          address: 40151
+          slave: 3
+          value:
+            - 0
+            - 803
+  - alias: Wenn BYD Akku 0.2C Laden
+    if:
+      - condition: state
+        entity_id: input_select.byd_akkusteuerung
+        state: BYD Akku 0.2C Laden
+    then:
+      - service: modbus.write_register
+        data:
+          hub: !input sma_wr_modbus_entity
+          address: 40151
+          slave: 3
+          value:
+            - 0
+            - 802
+      - delay:
+          hours: 0
+          minutes: 0
+          seconds: 5
+          milliseconds: 0
+      - service: modbus.write_register
+        data:
+          hub: !input sma_wr_modbus_entity
+          address: 40149
+          slave: 3
+          value:
+            - 65535
+            - 62975
+mode: single
